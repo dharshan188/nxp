@@ -8,4 +8,5 @@ ros2 run ros_gz_sim create -world default -file ~/cognipilot/cranium/install/dre
 then to run detector.py
 
 cd ~/Downloads
+
 python3 detector.py --goal A --image SignBoard.png
