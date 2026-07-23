@@ -10,3 +10,7 @@ then to run detector.py
 cd ~/Downloads
 
 python3 detector.py --goal A --image SignBoard.png
+
+
+
+ros2 topic pub --once /mission/goal std_msgs/msg/String "{data: 'A'}"
