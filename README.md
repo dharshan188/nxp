@@ -23,3 +23,7 @@ ros2 topic pub -r 20 /cerebri/in/joy sensor_msgs/msg/Joy "{axes: [0.0, 0.5, 0.0,
 ros2 run b3rb_ros_line_follower detect
 
 
+cd ~/cognipilot/cranium/src/b3rb_ros_line_follower/b3rb_ros_line_follower
+
+python3 keyboard_teleop.py
+
