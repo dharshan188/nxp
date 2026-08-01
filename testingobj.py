@@ -92,6 +92,14 @@ WHITE_HSV_HIGH = np.array([180, 125, 255])
 # flippy low-confidence call.
 ARROW_FILL_MAX = 0.45
 
+# Quality gate: only trust a direction when the arrow blob is substantial.
+# Below these, the arrow is too small / degraded (far range, blur) to read
+# reliably, so return None ("in doubt, leave it") instead of a confident wrong
+# call. Calibrated so every clean sample arrow passes (bh>=10, pixels>=216);
+# degraded far-range arrows (bh 7-9, ~140 px) are rejected.
+ARROW_MIN_HEIGHT = 10
+ARROW_MIN_PIXELS = 200
+
 # Straight must be REALLY vertical/narrow. Earlier value 1.45 caused broken
 # LEFT/RIGHT arrow fragments to be called STRAIGHT at mid range.
 STRAIGHT_ASPECT_MAX = 1.05
@@ -306,10 +314,15 @@ def classify_arrow_mask(mask):
     y0, y1 = int(ys.min()), int(ys.max())
     bw = x1 - x0 + 1
     bh = y1 - y0 + 1
-    if bw < 7 or bh < 7:
+    if bw < 7 or bh < ARROW_MIN_HEIGHT:
         return None, 0.0
     aspect = bw / float(bh + 1e-6)
     pixels = int(xs.size)
+    # Quality gate: a reliable arrow has enough mass. Tiny/degraded blobs (far
+    # range, blur) score high confidence but are wrong -> reject ("in doubt,
+    # leave it") so a direction is only emitted when the arrow is substantial.
+    if pixels < ARROW_MIN_PIXELS:
+        return None, 0.0
     sub = (mask[y0:y1 + 1, x0:x1 + 1] > 0).astype(np.uint8)
     col_counts = sub.sum(axis=0).astype(np.float32)
     row_counts = sub.sum(axis=1).astype(np.float32)
