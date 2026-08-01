@@ -253,6 +253,25 @@ def select_arrow_component(mask):
             continue
         if near_edge and bw <= 8 and bh > 0.30 * h:
             continue
+        # Reject thin horizontal divider/border stripes: they span most of the
+        # ROI width but are very short. These are letter/arrow separator lines
+        # caught at far or tilted range (else classified as a false horizontal
+        # arrow). A real horizontal arrow has a tall triangular head, so it is
+        # never a thin full-width band.
+        if bw >= 0.80 * w and bh <= 0.30 * h:
+            continue
+        # Reject full-height vertical fragments (letter strokes / borders that
+        # bleed into the ROI at tilted or far range). A real arrow never spans
+        # the entire ROI height (top AND bottom edges). Width-bounded so genuine
+        # straight-arrow heads (wider, with margin) are not affected.
+        if y <= 1 and (y + bh) >= (h - 1) and bw <= 14:
+            continue
+        # Reject sparse "frame" noise that spans the whole ROI (touches all four
+        # edges) from heavy JPEG/tilt. Dense floods are caught later by the fill
+        # guard; this catches low-area full-span noise. A real arrow never
+        # touches all four ROI edges at once.
+        if x <= 1 and (x + bw) >= (w - 1) and y <= 1 and (y + bh) >= (h - 1):
+            continue
         # Reject high fragments; after the lower crop, real arrow pixels are
         # still in the middle/lower part of the ROI. This prevents letter
         # pieces, especially the vertical part of 'A', from being classified
@@ -296,6 +315,13 @@ def classify_arrow_mask(mask):
     row_counts = sub.sum(axis=1).astype(np.float32)
     max_col_fill = float(col_counts.max()) / float(max(bh, 1))
     max_row_fill = float(row_counts.max()) / float(max(bw, 1))
+
+    # Reject disconnected fragments unioned into a false shape. If a large
+    # fraction of columns in the bbox are empty, the selected mask is really
+    # two or more separated blobs (letter pieces / partial arrow bits caught at
+    # far or tilted range), not one connected arrow.
+    if bw > 0 and int(np.count_nonzero(col_counts)) < 0.55 * bw:
+        return None, 0.0
 
     # ------------------------------------------------------------------
     # STRAIGHT / UP detector.
